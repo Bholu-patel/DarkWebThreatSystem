@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dark Web Threat Intelligence Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family:"Segoe UI", Arial;
+background:linear-gradient(135deg,#020617,#0f172a);
+color:white;
+margin:0;
+padding:0;
+text-align:center;
+}
+
+header{
+padding:25px;
+font-size:32px;
+font-weight:bold;
+background:#020617;
+box-shadow:0 0 15px #0ea5e9;
+}
+
+.container{
+margin-top:60px;
+}
+
+input{
+width:420px;
+padding:14px;
+font-size:16px;
+border-radius:8px;
+border:none;
+outline:none;
+}
+
+button{
+padding:14px 25px;
+font-size:16px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+color:white;
+margin:8px;
+background:linear-gradient(45deg,#06b6d4,#3b82f6);
+transition:all .3s ease;
+box-shadow:0 0 10px #38bdf8;
+}
+
+button:hover{
+transform:scale(1.08);
+box-shadow:0 0 20px #38bdf8,0 0 40px #38bdf8;
+}
+
+#result{
+margin-top:30px;
+font-size:26px;
+font-weight:bold;
+}
+
+.cards{
+display:flex;
+justify-content:center;
+gap:25px;
+margin-top:40px;
+flex-wrap:wrap;
+}
+
+.card{
+background:#020617;
+padding:25px;
+border-radius:12px;
+width:180px;
+box-shadow:0 0 12px #0ea5e9;
+transition:.3s;
+}
+
+.card:hover{
+transform:translateY(-6px) scale(1.03);
+box-shadow:0 0 20px #38bdf8;
+}
+
+.card h2{
+margin:0;
+font-size:32px;
+}
+
+.card p{
+margin:5px 0 0;
+color:#94a3b8;
+}
+
+.charts{
+display:flex;
+justify-content:center;
+align-items:center;
+gap:60px;
+flex-wrap:wrap;
+margin-top:50px;
+}
+
+.chart-box{
+width:320px;
+height:320px;
+background:#020617;
+padding:20px;
+border-radius:10px;
+box-shadow:0 0 12px #0ea5e9;
+}
+
+canvas{
+width:100% !important;
+height:100% !important;
+}
+
+table{
+margin:50px auto;
+border-collapse:collapse;
+width:70%;
+background:#020617;
+border-radius:10px;
+overflow:hidden;
+}
+
+th{
+background:#020617;
+color:#38bdf8;
+padding:15px;
+}
+
+td{
+padding:12px;
+border-bottom:1px solid #334155;
+}
+
+.examples{
+margin-top:20px;
+color:#94a3b8;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+🛡 Dark Web Threat Intelligence Monitoring System
+</header>
+
+<div class="container">
+
+<p>Enter suspicious message</p>
+
+<input id="textInput" placeholder="Enter suspicious text">
+
+<br>
+
+<button onclick="analyze()">Analyze Threat</button>
+
+<button onclick="startSimulation()">Start Live Threat Feed</button>
+
+<button onclick="stopSimulation()">Stop Live Threat Feed</button>
+
+<button onclick="resetDashboard()">Reset Dashboard</button>
+
+<div id="result"></div>
+
+<div class="examples">
+Example threats: selling bank passwords | database dump leaked | ransomware attack planned
+</div>
+
+</div>
+
+<div class="cards">
+
+<div class="card">
+<h2 id="total">0</h2>
+<p>Total Checked</p>
+</div>
+
+<div class="card">
+<h2 id="high">0</h2>
+<p>High Threats</p>
+</div>
+
+<div class="card">
+<h2 id="medium">0</h2>
+<p>Medium Threats</p>
+</div>
+
+<div class="card">
+<h2 id="low">0</h2>
+<p>Low Threats</p>
+</div>
+
+</div>
+
+
+<h2 style="margin-top:40px;">Threat Analytics</h2>
+
+<div class="charts">
+
+<div class="chart-box">
+<canvas id="pieChart"></canvas>
+</div>
+
+<div class="chart-box">
+<canvas id="barChart"></canvas>
+</div>
+
+</div>
+
+
+<h2 style="margin-top:40px;">Threat History</h2>
+
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Threat Level</th>
+<th>Risk Score</th>
+</tr>
+</thead>
+
+<tbody id="history"></tbody>
+</table>
+
+
+<script>
+
+let total=0
+let high=0
+let medium=0
+let low=0
+
+let simulationRunning=false
+let simulationInterval=null
+
+
+const simulatedThreats=[
+"selling bank passwords",
+"database dump leaked",
+"discussion about cybersecurity",
+"ransomware attack planned",
+"hack forum sharing exploit tools",
+"user credentials leaked online",
+"dark web selling credit cards",
+"system vulnerability discovered",
+"new malware spreading",
+"discussion about network security"
+]
+
+
+const pieChart=new Chart(document.getElementById("pieChart"),{
+type:"pie",
+data:{
+labels:["High","Medium","Low"],
+datasets:[{
+data:[0,0,0],
+backgroundColor:["red","orange","lime"]
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false
+}
+})
+
+
+const barChart=new Chart(document.getElementById("barChart"),{
+type:"bar",
+data:{
+labels:["High","Medium","Low"],
+datasets:[{
+label:"Threat Count",
+data:[0,0,0],
+backgroundColor:["red","orange","lime"]
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false
+}
+})
+
+
+function analyze(){
+
+let text=document.getElementById("textInput").value
+
+if(text.trim()===""){
+document.getElementById("result").innerHTML="Please enter text"
+return
+}
+
+document.getElementById("result").innerHTML="Analyzing..."
+
+fetch("http://127.0.0.1:5000/predict",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({text:text})
+
+})
+
+.then(response=>response.json())
+
+.then(data=>{
+
+total++
+
+if(data.threat_level==="High") high++
+else if(data.threat_level==="Medium") medium++
+else low++
+
+document.getElementById("total").innerText=total
+document.getElementById("high").innerText=high
+document.getElementById("medium").innerText=medium
+document.getElementById("low").innerText=low
+
+pieChart.data.datasets[0].data=[high,medium,low]
+pieChart.update()
+
+barChart.data.datasets[0].data=[high,medium,low]
+barChart.update()
+
+let color="lime"
+
+if(data.threat_level==="High") color="red"
+if(data.threat_level==="Medium") color="orange"
+
+document.getElementById("result").innerHTML=
+"<span style='color:"+color+"'>Threat Level: "+data.threat_level+
+"<br>Risk Score: "+data.risk_score+"/10</span>"
+
+let row=`
+<tr>
+<td>${text}</td>
+<td style="color:${color}">${data.threat_level}</td>
+<td>${data.risk_score}/10</td>
+</tr>
+`
+
+document.getElementById("history").innerHTML+=row
+
+})
+
+.catch(error=>{
+document.getElementById("result").innerHTML="Backend connection error"
+})
+
+}
+
+
+function startSimulation(){
+
+if(simulationRunning){
+alert("Live Threat Feed already running!")
+return
+}
+
+simulationRunning=true
+
+simulationInterval=setInterval(()=>{
+
+let randomThreat=simulatedThreats[
+Math.floor(Math.random()*simulatedThreats.length)
+]
+
+document.getElementById("textInput").value=randomThreat
+
+analyze()
+
+},4000)
+
+}
+
+
+function stopSimulation(){
+
+clearInterval(simulationInterval)
+
+simulationRunning=false
+
+document.getElementById("result").innerHTML="Live Threat Feed Stopped"
+
+}
+
+
+function resetDashboard(){
+
+total=0
+high=0
+medium=0
+low=0
+
+document.getElementById("total").innerText=0
+document.getElementById("high").innerText=0
+document.getElementById("medium").innerText=0
+document.getElementById("low").innerText=0
+
+document.getElementById("history").innerHTML=""
+
+document.getElementById("textInput").value=""
+
+document.getElementById("result").innerHTML="Dashboard Reset"
+
+pieChart.data.datasets[0].data=[0,0,0]
+pieChart.update()
+
+barChart.data.datasets[0].data=[0,0,0]
+barChart.update()
+
+stopSimulation()
+
+}
+
+</script>
+
+</body>
+</html>
